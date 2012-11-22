@@ -261,10 +261,12 @@ CommandlineProcessing::isOptionTakingSecondParameter( string argument )
           argument == "-rose:astMergeCommandFile" ||
 
           // Support for java options
-          argument == "-rose:java:cp" ||
-          argument == "-rose:java:classpath" ||
-          argument == "-rose:java:sourcepath" ||
-          argument == "-rose:java:d" ||
+          argument == "-classpath"      ||
+          argument == "-d"              ||
+          argument == "-encoding"       ||
+          argument == "-sourcepath"     ||
+          argument == "-source"         ||
+          argument == "-target"         ||
 
        // negara1 (08/16/2011)
           argument == "-rose:unparseHeaderFilesRootFolder" ||
@@ -326,11 +328,20 @@ CommandlineProcessing::isOptionTakingThirdParameter( string argument )
    }
 
 // DQ (1/16/2008): This function was moved from the commandling_processing.C file to support the debugging specific to binary analysis
+//
+// Returns a list of all the source file names.
+//
+//   1. Checks for "-o" option, implying this is a "source code compiler".
+//   2. Remove argv[0] which is simply the program name.
+//   3. Loop over all the arguments on the commandline to check if they are
+//      source code files.
+//
 Rose_STL_Container<string>
 CommandlineProcessing::generateSourceFilenames ( Rose_STL_Container<string> argList, bool binaryMode )
-   {
+{
      Rose_STL_Container<string> sourceFileList;
 
+  // (1) Check for "-o" option, implying this is a "source code compiler".
 
      bool isSourceCodeCompiler = false;
 
@@ -350,12 +361,12 @@ CommandlineProcessing::generateSourceFilenames ( Rose_STL_Container<string> argL
            break;
          }
          j++;
-
        }
-
-
      }
 
+    argList = SageSupport::Cmdline::Java::ExpandFilelist(argList);
+
+  // (2) Remove argv[0] which is simply the program name.
 
      Rose_STL_Container<string>::iterator i = argList.begin();
 
@@ -370,9 +381,11 @@ CommandlineProcessing::generateSourceFilenames ( Rose_STL_Container<string> argL
      i++;
 
 
+  // (3) Loop over all the arguments on the commandline to check if they are
+  //     source code files.
 
-     while ( i != argList.end() )
-        {
+    while (i != argList.end())
+    {
        // Count up the number of filenames (if it is ZERO then this is likely a
        // link line called using the compiler (required for template processing
        // in C++ with most compilers)) if there is at least ONE then this is the
@@ -382,77 +395,77 @@ CommandlineProcessing::generateSourceFilenames ( Rose_STL_Container<string> argL
        // most options appear as -<option>
        // have to process +w2 (warnings option) on some compilers so include +<option>
 
-       // DQ (1/5/2008): Ignore things that would be obvious options using a "-" or "+" prefix.
-       // if ( ((*i)[0] != '-') || ((*i)[0] != '+') )
-          if ( (*i).empty() || (((*i)[0] != '-') && ((*i)[0] != '+')) )
-             {
-            // printf ("In CommandlineProcessing::generateSourceFilenames(): Look for file names:  argv[%d] = %s length = %zu \n",counter,(*i).c_str(),(*i).size());
+        // DQ (12/8/2007): Looking for rose options that take filenames that
+        //                 would accidentally be considered as source files.
+        //
+        //                 Jump over the next argument when such options are
+        //                 identified.
+        // DQ (1/5/2008): Ignore things that would be obvious options using
+        // a "-" or "+" prefix.
+        if (((*i)[0] == '-') || ((*i)[0] == '+'))
+        {
+            std::string option = *i;
+            ++i; // chomp option
+            if (isOptionTakingSecondParameter(option) == true)
+            {
+                ++i; // chomp argument
 
-                 if (!isSourceFilename(*i) &&
-                     (binaryMode || !isObjectFilename(*i)) &&
-                     (binaryMode || isExecutableFilename(*i))) {
-                     // printf ("This is an executable file: *i = %s \n",(*i).c_str());
-                     // executableFileList.push_back(*i);
-                     if(isSourceCodeCompiler == false || binaryMode == true)
-                         sourceFileList.push_back(*i);
-                     goto incrementPosition;
-                  }
+                if (isOptionTakingThirdParameter(option) == true)
+                    ++i; // chomp argument
+            }
+        }
+        else
+        {
+            // printf ("In CommandlineProcessing::generateSourceFilenames(): Look for file names:  argv[%d] = %s length = %zu \n",counter,(*i).c_str(),(*i).size());
+            if (!isSourceFilename(*i) &&
+               (binaryMode || !isObjectFilename(*i)) &&
+               (binaryMode || isExecutableFilename(*i)))
+            {
+                // printf ("This is an executable file: *i = %s \n",(*i).c_str());
+                // executableFileList.push_back(*i);
+                if(isSourceCodeCompiler == false || binaryMode == true)
+                    sourceFileList.push_back(*i);
+                ++i;
+            }
 
             // PC (4/27/2006): Support for custom source file suffixes
             // if ( isSourceFilename(*i) )
-               if ( isObjectFilename(*i) == false && isSourceFilename(*i) == true )
-                  {
-                 // printf ("This is a source file: *i = %s \n",(*i).c_str());
-                 // foundSourceFile = true;
+            else if ( isObjectFilename(*i) == false && isSourceFilename(*i) == true )
+            {
+                // printf ("This is a source file: *i = %s \n",(*i).c_str());
+                // foundSourceFile = true;
+                sourceFileList.push_back(*i);
+                ++i;
+            }
+
+            else if (isObjectFilename(*i) == false &&
+                isSourceFilename(*i) == false &&
+                isValidFileWithExecutableFileSuffixes(*i) == true)
+            {
+                // printf ("This is at least an existing file of some kind: *i = %s \n",(*i).c_str());
+                // foundSourceFile = true;
+                if(isSourceCodeCompiler == false || binaryMode == true)
                     sourceFileList.push_back(*i);
-                    goto incrementPosition;
-                  }
-#if 1
-               if ( isObjectFilename(*i) == false && isSourceFilename(*i) == false && isValidFileWithExecutableFileSuffixes(*i) == true )
-                  {
-                 // printf ("This is at least an existing file of some kind: *i = %s \n",(*i).c_str());
-                 // foundSourceFile = true;
-                    if(isSourceCodeCompiler == false || binaryMode == true)
-                      sourceFileList.push_back(*i);
-                    goto incrementPosition;
+                ++i;
+            }
 
-                  }
-#endif
-#if 0
-               if ( isObjectFilename(*i) )
-                  {
-                    objectFileList.push_back(*i);
-                  }
-#endif
-             }
-
-       // DQ (12/8/2007): Looking for rose options that take filenames that would accidentally be considered as source files.
-       // if (isOptionTakingFileName(*i) == true)
-          if (isOptionTakingSecondParameter(*i) == true)
-             {
-               if (isOptionTakingThirdParameter(*i) == true)
-                  {
-                 // Jump over the next argument when such options are identified.
-                    i++;
-                  }
-
-            // Jump over the next argument when such options are identified.
-               i++;
-             }
-
-incrementPosition:
-
-          i++;
+            else
+            {
+                std::cout << "[FATAL] Unknown file type for file '" << *i << "'.";
+                ROSE_ASSERT(false);
+            }
         }
+    } // end while iteration over CLI arguments checking for source file names
 
-     if (SgProject::get_verbose() > 0)
-        {
-          printf ("sourceFileList = = %s \n",StringUtility::listToString(sourceFileList).c_str());
-          printf ("######################### Leaving of CommandlineProcessing::generateSourceFilenames() ############################ \n");
-        }
+    if (SgProject::get_verbose() > 0)
+    {
+        printf ("[INFO] [CommandlineProcessing] [generateSourceFilenames()] "
+                "sourceFileList = '%s'.\n",
+                StringUtility::listToString(sourceFileList).c_str());
+    }
 
      return sourceFileList;
-   }
+}
 
 /*-----------------------------------------------------------------------------
  *  namespace SgProject {
@@ -671,38 +684,25 @@ SgProject::processCommandLine(const vector<string>& input_argv)
           set_Fortran_only(true);
         }
 
+
+  //---------------------------------------------------------------------------
+  // Java
+  //
   // DQ (10/11/2010): Adding initial Java support.
-     set_Java_only(false);
-     ROSE_ASSERT (get_Java_only() == false);
-     if ( CommandlineProcessing::isOption(local_commandLineArgumentList,"-rose:","(j|J|java|Java)",true) == true )
-        {
-          if ( SgProject::get_verbose() > 0 )
-               printf ("In SgProject: Java only mode ON \n");
-          set_Java_only(true);
+  //
+  // TODO: Only process if Java is enabled
+  {
+      // Reset to default
+      set_Java_only(false);
+      ROSE_ASSERT(get_Java_only() == false);
+      SageSupport::Cmdline::Java::
+          Project::Process(this, local_commandLineArgumentList);
+  }
 
-       // DQ (4/2/2011): Java code is only compiled, not linked as is C/C++ and Fortran.
-          set_compileOnly(true);
-        }
 
-     string javaRosePrefix = "-rose:java:";
-     // Java classpath option support
-     string javaTmpParameter;
-     if (CommandlineProcessing::isOptionWithParameter(local_commandLineArgumentList, javaRosePrefix,"(cp|classpath)", javaTmpParameter, true) == true) {
-         // Parse and register the java classpath in the project
-         std::list<std::string> cpList = StringUtility::tokenize(javaTmpParameter, ':');
-         set_Java_classpath(cpList);
-     }
-     // Java sourcepath option support
-     if (CommandlineProcessing::isOptionWithParameter(local_commandLineArgumentList, javaRosePrefix,"(sourcepath)", javaTmpParameter, true) == true) {
-         // Parse and register the java sourcepath in the project
-         std::list<std::string> cpList = StringUtility::tokenize(javaTmpParameter, ':');
-         set_Java_sourcepath(cpList);
-     }
-     // Java destination dir option support
-     if (CommandlineProcessing::isOptionWithParameter(local_commandLineArgumentList, javaRosePrefix,"(d)", javaTmpParameter, true) == true) {
-         set_Java_destdir(javaTmpParameter);
-     }
-
+  //---------------------------------------------------------------------------
+  //
+  //
      if ( CommandlineProcessing::isOption(local_commandLineArgumentList,"-rose:","wave",false) == true )
         {
        // printf ("Option -c found (compile only)! \n");
@@ -1081,9 +1081,349 @@ SgProject::processCommandLine(const vector<string>& input_argv)
 #endif
    }
 
+//------------------------------------------------------------------------------
+//                                  Java
+//------------------------------------------------------------------------------
+
+void
+SageSupport::Cmdline::Java::Project::
+Process (SgProject* project, std::vector<std::string>& argv)
+{
+  // TODO: Is there a prefered ordering?
+  ProcessJavaOnly(project, argv);
+  ProcessDestdir(project, argv);
+  ProcessClasspath(project, argv);
+  ProcessSourcepath(project, argv);
+  ProcessEncoding(project, argv);
+  ProcessSource(project, argv);
+  ProcessTarget(project, argv);
+}
+
+void
+SageSupport::Cmdline::Java::Project::
+ProcessJavaOnly (SgProject* project, std::vector<std::string>& argv)
+{
+  bool is_java_only =
+      CommandlineProcessing::isOption(
+          argv,
+          Java::option_prefix,
+          "",
+          true);
+
+  if (is_java_only)
+  {
+      if (SgProject::get_verbose() > 0)
+          printf ("[INFO] Java only mode is ON\n");
+
+      // DQ (4/2/2011): Java code is only compiled, not linked as is C/C++
+      //                and Fortran.
+      project->set_compileOnly(true);
+      project->set_Java_only(true);
+  }
+}
+
+void
+SageSupport::Cmdline::Java::Project::
+ProcessClasspath (SgProject* project, std::vector<std::string>& argv)
+{
+  std::string classpath;
+
+  bool has_classpath =
+      CommandlineProcessing::isOptionWithParameter(
+          argv,
+          "-",
+          "classpath",
+          classpath, true);
+
+  if (has_classpath)
+  {
+      // Parse and register the java classpath in the project
+      std::list<std::string> classpath_list =
+          StringUtility::tokenize(classpath, ':');
+      project->set_Java_classpath(classpath_list);
+
+      // Append '-classpath <arg>' to project commandline
+      std::list<std::string> java_cmdline_options =
+          project->get_java_cmdline_options();
+      java_cmdline_options.push_back("-classpath");
+      java_cmdline_options.push_back(classpath);
+      project->set_java_cmdline_options(java_cmdline_options);
+  }
+}
+
+void
+SageSupport::Cmdline::Java::Project::
+ProcessSourcepath (SgProject* project, std::vector<std::string>& argv)
+{
+  std::string sourcepath;
+
+  bool has_sourcepath =
+      CommandlineProcessing::isOptionWithParameter(
+          argv,
+          "-",
+          "sourcepath",
+          sourcepath, true);
+
+  if (has_sourcepath)
+  {
+      // Parse and register the java sourcepath in the project
+      std::list<std::string> sourcepath_list =
+          StringUtility::tokenize(sourcepath, ':');
+      project->set_Java_sourcepath(sourcepath_list);
+
+      // Append '-sourcepath <arg>' to project commandline
+      std::list<std::string> java_cmdline_options =
+          project->get_java_cmdline_options();
+      java_cmdline_options.push_back("-sourcepath");
+      java_cmdline_options.push_back(sourcepath);
+      project->set_java_cmdline_options(java_cmdline_options);
+  }
+}
+
+void
+SageSupport::Cmdline::Java::Project::
+ProcessDestdir (SgProject* project, std::vector<std::string>& argv)
+{
+  std::string destdir;
+
+  bool has_destdir =
+      CommandlineProcessing::isOptionWithParameter(
+          argv,
+          "-",
+          "d",
+          destdir, true);
+
+  if (has_destdir)
+  {
+      project->set_Java_destdir(destdir);
+
+      // Append '-destdir <arg>' to project commandline
+      std::list<std::string> java_cmdline_options =
+          project->get_java_cmdline_options();
+      java_cmdline_options.push_back("-d");
+      java_cmdline_options.push_back(destdir);
+      project->set_java_cmdline_options(java_cmdline_options);
+  }
+}
+
+void
+SageSupport::Cmdline::Java::Project::
+ProcessEncoding (SgProject* project, std::vector<std::string>& argv)
+{
+  std::string encoding;
+
+  bool has_encoding =
+      CommandlineProcessing::isOptionWithParameter(
+          argv,
+          "-",
+          "encoding",
+          encoding, true);
+
+  if (has_encoding)
+  {
+      project->set_java_encoding(encoding);
+
+      // Append '-encoding <arg>' to project commandline
+      std::list<std::string> java_cmdline_options =
+          project->get_java_cmdline_options();
+      java_cmdline_options.push_back("-encoding");
+      java_cmdline_options.push_back(encoding);
+      project->set_java_cmdline_options(java_cmdline_options);
+  }
+}
+
+void
+SageSupport::Cmdline::Java::Project::
+ProcessSource (SgProject* project, std::vector<std::string>& argv)
+{
+  std::string source;
+
+  bool has_source =
+      CommandlineProcessing::isOptionWithParameter(
+          argv,
+          "-",
+          "source",
+          source, true);
+
+  if (has_source)
+  {
+      project->set_java_source(source);
+
+      // Append '-source <arg>' to project commandline
+      std::list<std::string> java_cmdline_options =
+          project->get_java_cmdline_options();
+      java_cmdline_options.push_back("-source");
+      java_cmdline_options.push_back(source);
+      project->set_java_cmdline_options(java_cmdline_options);
+  }
+}
+
+void
+SageSupport::Cmdline::Java::Project::
+ProcessTarget (SgProject* project, std::vector<std::string>& argv)
+{
+  std::string target;
+
+  bool has_target =
+      CommandlineProcessing::isOptionWithParameter(
+          argv,
+          "-",
+          "target",
+          target, true);
+
+  if (has_target)
+  {
+      project->set_java_target(target);
+
+      // Append '-target <arg>' to project commandline
+      std::list<std::string> java_cmdline_options =
+          project->get_java_cmdline_options();
+      java_cmdline_options.push_back("-target");
+      java_cmdline_options.push_back(target);
+      project->set_java_cmdline_options(java_cmdline_options);
+  }
+}
+
+
+void
+SageSupport::Cmdline::Java::File::
+Process (SgFile* file, std::vector<std::string>& argv)
+{
+  bool is_java_only =
+      CommandlineProcessing::isOption(
+          argv,
+          Java::option_prefix,
+          "",
+          true);
+
+  if (is_java_only)
+  {
+      if (SgProject::get_verbose() > 0)
+          printf ("[INFO] Java only mode is ON\n");
+
+      file->set_Java_only(true);
+
+      if (file->get_sourceFileUsesJavaFileExtension() == false)
+      {
+          printf ("[Warning] Conflicting commandline values: You're trying to "
+                  "compile a non-java source code file ('%s'), yet you "
+                  "explicitly requested to only compile Java source code "
+                  "when you used the '-rose:java' commandline option. "
+                  "So I am now turning off \"Java-only\" mode for you, in "
+                  "favor of trying to compile your code. If this fails, please "
+                  "consider removing the '-rose:java' option from your "
+                  "commandline.\n",
+                  file->getFileName().c_str());
+
+          // DQ (4/2/2011): Java code is only compiled, not linked as is C/C++
+          //                and Fortran.
+          file->set_compileOnly(true);
+          file->set_Java_only(false);
+      }
+  }
+}
+
+Rose_STL_Container<std::string>
+SageSupport::Cmdline::Java::
+ExpandFilelist (const std::string& filelist_string)
+{
+  ROSE_ASSERT(!filelist_string.empty());
+  ROSE_ASSERT(filelist_string[0] == '@'); // @filename
+
+  Rose_STL_Container<std::string> filelist;
+
+  if (filelist_string.size() < 2)
+  {
+      std::cout
+          << "[FATAL] No filename found after @ symbol "
+          << "on the command line. Should be @<filename>."
+          << std::endl;
+      ROSE_ASSERT(false);
+  }
+  else
+  {
+      std::string filename = filelist_string.substr(1);
+      ROSE_ASSERT(filename.empty() == false);
+
+      filelist = SageSupport::Cmdline::GetListFromFile(filename);
+      if (SgProject::get_verbose() > 2)
+      {
+          printf ("[INFO] "
+                  "Expanded @%s = '%s'\n",
+                  filename.c_str(),
+                  StringUtility::listToString(filelist).c_str());
+      }
+      return filelist;
+  }
+}
+
+
+// TODO: should we validate that '@filelist' is only
+// passed once on the commandline?
+Rose_STL_Container<std::string>
+SageSupport::Cmdline::Java::
+ExpandFilelist (const Rose_STL_Container<std::string>& p_argv)
+{
+  Rose_STL_Container<std::string> argv = p_argv;
+  Rose_STL_Container<std::string>::iterator i = argv.begin();
+  while (i != argv.end())
+  {
+      std::string argument = *i;
+      if (argument[0] == '@')
+      {
+          Rose_STL_Container<std::string> filelist =
+              SageSupport::Cmdline::Java::ExpandFilelist(argument);
+
+          // Insert actual list of files in-place where @filename was found
+          int i_offset = std::distance(argv.begin(), i);
+          argv.erase(i);
+          argv.insert(argv.end(), filelist.begin(), filelist.end());
+          i = argv.begin() + i_offset;
+      }
+      else
+      {
+          ++i; // next commandline argument
+      }
+  }
+  return argv;
+}
+
+
+
+std::vector<std::string>
+SageSupport::Cmdline::
+GetListFromFile (const std::string& filename)
+{
+    ROSE_ASSERT(! filename.empty());
+
+    std::vector<std::string> filelist;
+    std::ifstream            file(filename.c_str());
+    std::string              line;
+
+    while (!file.fail() && std::getline(file, line))
+    {
+        filelist.push_back(line);
+    }
+
+    file.close();
+
+    if (filelist.empty())
+    {
+        std::cout
+            << "[FATAL] No filenames found in file "
+            << "'" << filename << "'"
+            << std::endl;
+        ROSE_ASSERT(false);
+    }
+
+    return filelist;
+}
+
 /*-----------------------------------------------------------------------------
  *  namespace SgFile {
  *---------------------------------------------------------------------------*/
+
+// TODO: Add options for each backend compiler that ROSE currently supports.
 void
 SgFile::usage ( int status )
    {
@@ -1115,14 +1455,8 @@ SgFile::usage ( int status )
 "                             follow C99 standard, disable C++\n"
 "     -rose:Cxx_only, -rose:Cxx\n"
 "                             follow C++ 89 standard\n"
-"     -rose:Java, -rose:java, -rose:J, -rose:j\n"
+"     -rose:java\n"
 "                             compile Java code (work in progress)\n"
-"     -rose:java:cp, -rose:java:classpath\n"
-"                             Classpath to look for java classes\n"
-"     -rose:java:sourcepath\n"
-"                             Sourcepath to look for java sources\n"
-"     -rose:java:d\n"
-"                             Specifies generated classes destination dir\n"
 "     -rose:Python, -rose:python, -rose:py\n"
 "                             compile Python code\n"
 "     -rose:OpenMP, -rose:openmp\n"
@@ -1744,21 +2078,16 @@ SgFile::processRoseCommandLineOptions ( vector<string> & argv )
              }
         }
 
+  //---------------------------------------------------------------------------
+  // Java
+  //
   // DQ (10/11/2010): Adding initial Java support.
-     if ( CommandlineProcessing::isOption(argv,"-rose:","(j|J|Java)",true) == true )
-        {
-          if ( SgProject::get_verbose() >= 1 )
-               printf ("Java only mode ON \n");
-          set_Java_only(true);
-          if (get_sourceFileUsesJavaFileExtension() == false)
-             {
-               printf ("Warning, Non Java source file name specified with explicit -rose:Java Java language option! \n");
-               set_Java_only(false);
-
-            // DQ (4/2/2011): Java code is only compiled, not linked as is C/C++ and Fortran.
-               set_compileOnly(true);
-             }
-        }
+  //
+  // TODO: Only process if Java is enabled
+  {
+      SageSupport::Cmdline::Java::
+          File::Process(this, argv);
+  }
 
   // driscoll6 (8/8/11): python support
      if ( CommandlineProcessing::isOption(argv,"-rose:","(py|python|Python)",true) == true )

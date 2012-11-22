@@ -1595,12 +1595,36 @@ Grammar::setUpSupport ()
      Project.setDataPrototype ( "bool", "openmp_linking", "= false",
             NO_CONSTRUCTOR_PARAMETER, BUILD_FLAG_ACCESS_FUNCTIONS, NO_TRAVERSAL, NO_DELETE);
 
+//----------------------------------------------------------------------------
+// Java properties
+//
+    // java_cmdline_options
+    //
+    // Collection of -classpath, -sourcepath, -d, etc., but NOT the source
+    // file, compiler name, etc. This is a convenience so we don't have to
+    // remember to manually add each individual option to the various java
+    // compiler command lines, instead we can simply use:
+    //
+    //     project->get_java_cmdline_options();
+    //
+    Project.setDataPrototype("std::list<std::string>", "java_cmdline_options", "",
+          NO_CONSTRUCTOR_PARAMETER, BUILD_ACCESS_FUNCTIONS, NO_TRAVERSAL, NO_DELETE);
+    Project.setDataPrototype ("std::string", "java_encoding", "",
+          NO_CONSTRUCTOR_PARAMETER, BUILD_ACCESS_FUNCTIONS, NO_TRAVERSAL, NO_DELETE);
+    Project.setDataPrototype ("std::string", "java_source", "",
+          NO_CONSTRUCTOR_PARAMETER, BUILD_ACCESS_FUNCTIONS, NO_TRAVERSAL, NO_DELETE);
+    Project.setDataPrototype ("std::string", "java_target", "",
+          NO_CONSTRUCTOR_PARAMETER, BUILD_ACCESS_FUNCTIONS, NO_TRAVERSAL, NO_DELETE);
+
      Project.setDataPrototype ("std::list<std::string>", "Java_classpath", "",
             NO_CONSTRUCTOR_PARAMETER, NO_ACCESS_FUNCTIONS, NO_TRAVERSAL, NO_DELETE);
      Project.setDataPrototype ("std::list<std::string>", "Java_sourcepath", "",
             NO_CONSTRUCTOR_PARAMETER, NO_ACCESS_FUNCTIONS, NO_TRAVERSAL, NO_DELETE);
      Project.setDataPrototype("std::string", "Java_destdir", "= ROSE::getWorkingDirectory()",
             NO_CONSTRUCTOR_PARAMETER, NO_ACCESS_FUNCTIONS, NO_TRAVERSAL, NO_DELETE);
+// Java properties ^
+//----------------------------------------------------------------------------
+
 
   // DQ (10/3/2010): Adding support for having CPP directives explicitly in the AST (as IR nodes instead of handled similar to comments).
      Project.setDataPrototype ( "bool", "addCppDirectivesToAST", "= false",
