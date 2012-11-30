@@ -3380,22 +3380,10 @@ SgSourceFile::build_Java_AST( vector<string> argv, vector<string> inputCommandLi
 
 
   // Option to just run the parser (not constructing the AST) and quit.
-  // printf ("get_exit_after_parser() = %s \n",get_exit_after_parser() ? "true" : "false");
-     if (get_exit_after_parser() == true)
-        {
-           int errorCode = 0;
-
-          if (errorCode != 0)
-             {
-               printf ("Using option -rose:exit_after_parser (errorCode = %d) \n",errorCode);
-               ROSE_ASSERT(false);
-             }
-          printf ("Skipping all processing after parsing java (ECJ) ... (get_exit_after_parser() == true) errorCode = %d \n",errorCode);
-       // exit(0);
-
-          ROSE_ASSERT(errorCode == 0);
-          return errorCode;
-       }
+  if (get_exit_after_parser() == true)
+  {
+      return 0;
+  }
 
   // Note that for the ECJ JVM support, the filename must appear last on the command line.
   // I think it is only an intermediate test before actually calling ECJ that requires 
@@ -3403,16 +3391,6 @@ SgSourceFile::build_Java_AST( vector<string> argv, vector<string> inputCommandLi
      vector<string> frontEndCommandLine;
 
      frontEndCommandLine.push_back(argv[0]);
-
-  // DQ (10/20/2010): This is what we want in the Fortran support, but not for the Java support.
-  // frontEndCommandLine.push_back("--class");
-  // frontEndCommandLine.push_back("JavaTraversal");
-
-#if 0
-  // Debugging output
-     get_project()->display("Calling SgProject display");
-     display("Calling SgFile display");
-#endif
 
   // Added an option to the ECJ command line to support different levels of output from the Java side of the house.
      string verboseOptionString = "--rose:verbose " + StringUtility::numberToString(SgProject::get_verbose());
@@ -3422,19 +3400,11 @@ SgSourceFile::build_Java_AST( vector<string> argv, vector<string> inputCommandLi
         }
      frontEndCommandLine.push_back(verboseOptionString);
 
-  // frontEndCommandLine.push_back("-d none");
-#if 1
   // DQ (4/1/2011): Add "-d" option to prevent java "class" files from being generated into the source tree.
   // Since we implement a source-to-source compiler, we don't need these to be generated. Note that this
   // must be inserted as two seperate strings to have it work properly.
      frontEndCommandLine.push_back("-d");
      frontEndCommandLine.push_back("none");
-#else
-  // DQ (4/2/2011): Specify the current directory as the location for the generated *.class files.
-  // Upon later consideration this is the option that I think I want to pass the the backend compiler, not the frontend.
-     frontEndCommandLine.push_back("-d");
-     frontEndCommandLine.push_back(".");
-#endif
 
   // DQ (4/1/2011): Added ecj option handling (similar to how EDG option handling is supported).
   // This allows ECJ specific option to be set on the command line for ROSE translators.
