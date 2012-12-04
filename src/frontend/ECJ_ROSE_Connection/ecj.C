@@ -1,3 +1,5 @@
+#include <assert.h>
+
 #include <string.h>
 #include <string>
 #include <stdlib.h>
@@ -48,10 +50,14 @@ static jobject jofp_get_new_object(jmethodID method, jobjectArray args, jstring 
 
 
 static int jofp_invoke(int argc, char **argv) {
+    if (argc > 0) {
+        assert(argv != NULL);
+    }
+
     int retval= 0;
 
     jobjectArray args;
- 
+
     /* Create a Java String[] out of argv (everything after the first arg).  */
     args = jserver_getJavaStringArray(argc, argv);
 
@@ -68,8 +74,11 @@ static int jofp_invoke(int argc, char **argv) {
 
     if (fileName == NULL || args == NULL || type == NULL) jserver_handleException(); 
 
-    // tps : this code is more transparent and easier to read
+    // TOO1 (12/5/2012) - In order for the "JavaTraversal" class to be found,
+    //                    it must have been loaded into the JVM, i.e. the file
+    //                    "JavaTraversal.class" must be in the classpath.
     jclass cls = jserver_FindClass("JavaTraversal");
+    assert(cls != NULL);
     jmethodID  mainMethod = jserver_GetMethodID(STATIC_METHOD, cls, "main",  "([Ljava/lang/String;)V");
     JNIEnv* env = getEnv();
     (*env).CallStaticVoidMethod(cls, mainMethod,args);

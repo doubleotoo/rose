@@ -3466,6 +3466,18 @@ SgSourceFile::build_Java_AST( vector<string> argv, vector<string> inputCommandLi
           frontEndCommandLine.push_back("-1.6");
         }
 
+// TODO: refactor frontEndCommandLine setup; for now I am
+//       adding this here just to see what happens.
+    {
+        std::list<std::string> java_cmdline_options =
+          this->get_project()->get_java_cmdline_options();
+
+        frontEndCommandLine.insert(
+            frontEndCommandLine.end(),
+            java_cmdline_options.begin(),
+            java_cmdline_options.end());
+    }
+
   // Java does not use include files, so we can enforce this.
      ROSE_ASSERT(get_project()->get_includeDirectorySpecifierList().empty() == true);
 
