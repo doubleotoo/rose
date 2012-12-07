@@ -1,4 +1,5 @@
 include $(top_srcdir)/config/Makefile.for.ROSE.includes.and.libs
+include $(top_srcdir)/tests/input_codes/Makefile.for.input.codes
 
 ##################################################################################
 # These are C testcodes targeting aspects of C that might not be a subset of C++ #
@@ -500,8 +501,48 @@ testWithoutJavaSpecification: $(testTranslator)
 testJava_option: $(testTranslator)
 	$(testTranslator) -ecj:1.7 -rose:verbose 0 -rose:skipfinalCompileStep -c $(srcdir)/test2011_44.java
 
+
+#-------------------------------------------------------------------------------
+# Command Line Interface (CLI) Tests
+#-------------------------------------------------------------------------------
+test_cli: test_cli__all_basic test_cli__customDestdir
+
+# 1. Create a file to test the javac @filelist
+# 2. Run the ROSE translator to exercise every
+#    supported Java commandline option.
+test_cli__all_basic:
+	echo "$(__minimal_input_code__java)" > filelist.txt
+# Example from apache-jmeter:
+	$(testTranslator) \
+			-classpath .  \
+			-d . \
+			-encoding UTF-8 \
+			-sourcepath . \
+			-source 1.6 \
+			-target 1.6 \
+			@filelist.txt
+
+# Generate a Java *.class file in a temporary
+# directory and then check for its existence.
+test_cli__customDestdir:
+	mkdir -p ./tmp
+	rm -f ./tmp/minimal.class
+	$(testTranslator) -d tmp "$(__minimal_input_code__java)"
+	test -f tmp/minimal.class
+
+# Run all of the tests with the installed ROSE translator
+#
+# This target assumes make-install has already been run.
+installcheck-local:
+	$(MAKE) check testTranslator=$(DESTDIR)$(bindir)/testTranslator
+
+
+#-------------------------------------------------------------------------------
+#
+#-------------------------------------------------------------------------------
+
 # Build a rule to allow running all tests in parallel...
-extraTests: testWithJavaSpecification testWithoutJavaSpecification testECJ_help_option testJava_option graphWithFileInfo
+extraTests: test_cli testWithJavaSpecification testWithoutJavaSpecification testECJ_help_option testJava_option graphWithFileInfo
 
 # Execute the java file using: java -Djava.library.path=. HelloWorld
 
@@ -545,7 +586,14 @@ endif
 EXTRA_DIST = $(ALL_TESTCODES) testWithJavaSpecification.java testWithoutJavaSpecification.java gcjTestSuite 
 
 clean-local:
-	rm -f *.dot *.class *.java rose_performance_report_lockfile.lock *.out
+	rm -f \
+		*.dot \
+		*.class \
+		*.java \
+		rose_performance_report_lockfile.lock \
+		*.out
+	rm -f *.txt
+	rm -rf tmp/
 #	Remove any generated JVM log files that could have been generated (these are rare).
 	rm -f *.log
 

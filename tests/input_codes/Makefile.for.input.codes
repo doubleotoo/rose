@@ -6,6 +6,13 @@
 ##------------------------------------------------------------------------------
 ## Minimal input codes (just enough to be 'compiled')
 
+__minimal_input_code__cpp    = $(top_srcdir)/tests/input_codes/minimal/minimal.cpp
+__minimal_input_code__f90    = $(top_srcdir)/tests/input_codes/minimal/minimal.f90
+__minimal_input_code__java   = $(top_srcdir)/tests/input_codes/minimal/minimal.java
+__minimal_input_code__php    = $(top_srcdir)/tests/input_codes/minimal/minimal.php
+__minimal_input_code__py     = $(top_srcdir)/tests/input_codes/minimal/minimal.py
+__minimal_input_code__binary = $(top_srcdir)/tests/input_codes/minimal/minimal.binary
+
 if ROSE_BUILD_C_LANGUAGE_SUPPORT
   __minimal_input_code = $(top_srcdir)/tests/input_codes/minimal/minimal.cpp
 else
@@ -29,4 +36,3 @@ endif # PHP
 endif # Java
 endif # Fortran
 endif # C
-
