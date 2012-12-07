@@ -3160,9 +3160,8 @@ SgFile::stripJavaCommandLineOptions ( vector<string> & argv )
      CommandlineProcessing::removeArgsWithParameters (argv,"-ecj_parameter:");
      CommandlineProcessing::removeArgsWithParameters (argv,"--ecj_parameter:");
 
-     string javaRosePrefix = "-rose:java:";
      // if destination is not provided, insert rose's default one for java.
-     if (!CommandlineProcessing::isOption(argv, javaRosePrefix, "d", false)) {
+     if (!CommandlineProcessing::isOption(argv, "-", "d", false)) {
          // Put *.class files generated from calling that backend compiler (javac) and the ROSE generated code
          // into the current directory.  This makes the semantics for Java similar to all other languages in
          // ROSE but it is different from the default behavior for "javac".  So it is not clear if we really
@@ -3174,13 +3173,6 @@ SgFile::stripJavaCommandLineOptions ( vector<string> & argv )
          argv.push_back("-d");
          argv.push_back(ROSE::getWorkingDirectory());
      }
-
-     // Need to rewrite javac options prefix before handing them to the backend.
-     Rose_STL_Container<string> rose_java_options = CommandlineProcessing::generateOptionWithNameParameterList(argv, javaRosePrefix, "-");
-     for (Rose_STL_Container<string>::iterator i = rose_java_options.begin(); i != rose_java_options.end(); ++i)
-       {
-         argv.push_back(*i);
-       }
    }
 
 void

@@ -3213,20 +3213,12 @@ SgSourceFile::doJavaSyntaxCheck()
           //
           // DQ (7/20/2011): We can't build a striang with spaces, I don't know why.  Each part of the option 
           // for "-sourcepath <path>" or "-d <path>" must be pushed onto the javaCommandLine seperately.
+          if (this->get_project()->get_Java_destdir().empty())
           {
-              if (this->get_project()->get_Java_destdir().empty())
-              {
-                  // Set default "-d" to be the current build directory
-
-                  // Use C system function to get the current directory.
-                  // char currentDirectory[PATH_MAX];
-                  // char currentDirectory[MAX_PATH];
-                  char currentDirectory[8096];
-                  getcwd(currentDirectory, sizeof(currentDirectory));
-
-                  javaCommandLine.push_back("-d");
-                  javaCommandLine.push_back(currentDirectory);
-              }
+              // Set the default "-d" destdir since it has not been
+              // explicitly specified by the user on the commandline.
+              javaCommandLine.push_back("-d");
+              javaCommandLine.push_back(ROSE::getWorkingDirectory());
           }
 
 
@@ -3390,7 +3382,20 @@ SgSourceFile::build_Java_AST( vector<string> argv, vector<string> inputCommandLi
   // this so it could be relaxed with a bit of work.
      vector<string> frontEndCommandLine;
 
+    // Add the frontend compiler's executable name.
      frontEndCommandLine.push_back(argv[0]);
+
+    // Add all of the Java options that the user specified on
+    // the ROSE commandline.
+    {
+        std::list<std::string> java_cmdline_options =
+          this->get_project()->get_java_cmdline_options();
+
+        frontEndCommandLine.insert(
+            frontEndCommandLine.end(),
+            java_cmdline_options.begin(),
+            java_cmdline_options.end());
+    }
 
   // Added an option to the ECJ command line to support different levels of output from the Java side of the house.
      string verboseOptionString = "--rose:verbose " + StringUtility::numberToString(SgProject::get_verbose());
@@ -3403,8 +3408,13 @@ SgSourceFile::build_Java_AST( vector<string> argv, vector<string> inputCommandLi
   // DQ (4/1/2011): Add "-d" option to prevent java "class" files from being generated into the source tree.
   // Since we implement a source-to-source compiler, we don't need these to be generated. Note that this
   // must be inserted as two seperate strings to have it work properly.
-     frontEndCommandLine.push_back("-d");
-     frontEndCommandLine.push_back("none");
+    if (this->get_project()->get_Java_destdir().empty())
+    {
+        // Set the default "-d" destdir since it has not been
+        // explicitly specified by the user on the commandline.
+        frontEndCommandLine.push_back("-d");
+        frontEndCommandLine.push_back(ROSE::getWorkingDirectory());
+    }
 
   // DQ (4/1/2011): Added ecj option handling (similar to how EDG option handling is supported).
   // This allows ECJ specific option to be set on the command line for ROSE translators.
@@ -3465,18 +3475,6 @@ SgSourceFile::build_Java_AST( vector<string> argv, vector<string> inputCommandLi
         {
           frontEndCommandLine.push_back("-1.6");
         }
-
-// TODO: refactor frontEndCommandLine setup; for now I am
-//       adding this here just to see what happens.
-    {
-        std::list<std::string> java_cmdline_options =
-          this->get_project()->get_java_cmdline_options();
-
-        frontEndCommandLine.insert(
-            frontEndCommandLine.end(),
-            java_cmdline_options.begin(),
-            java_cmdline_options.end());
-    }
 
   // Java does not use include files, so we can enforce this.
      ROSE_ASSERT(get_project()->get_includeDirectorySpecifierList().empty() == true);
