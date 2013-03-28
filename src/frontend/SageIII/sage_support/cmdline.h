@@ -14,10 +14,13 @@
 #include "sage_support.h"
 
 namespace SageSupport {
-namespace /*SageSupport::*/Cmdline {
-static void
-makeSysIncludeList(const Rose_STL_Container<string> &dirs,
-                   Rose_STL_Container<string> &result);
+namespace Cmdline {
+  static void
+  makeSysIncludeList(const Rose_STL_Container<string> &dirs,
+                     Rose_STL_Container<string> &result);
+
+  void
+  ProcessKeepGoing (SgProject* project, std::vector<std::string>& argv);
 } // namespace SageSupport::Cmdline
 } // namespace SageSupport
 #endif // ROSE_SAGESUPPORT_CMDLINE_H
